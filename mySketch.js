@@ -12,6 +12,8 @@ let blendModeInfos;
 
 let myFont;
 
+let isGrayscale = false;
+
 
 function preload() {
 	myFont = loadFont("Roboto-Medium.ttf");
@@ -57,7 +59,12 @@ function mousePressed() {
 	background(100);
 	randomiseTheBlendMode();
 }
-
+function wipe() {
+	push();
+	blendMode(BLEND);
+	background(50);
+	pop();
+}
 function randomiseTheBlendMode() {
 	const interestingModes = blendModeInfos.filter(i => !i.skip);
 	chosenBlendMode = random(interestingModes);
@@ -72,13 +79,18 @@ function fillWithRandomColour() {
 	fill(h, s, b);
 }
 
+function fillWithRandomGrayscale() {
+	colorMode(RGB);
+	fill(random(255));
+}
+
 function draw() {
 	var w = random(50, 300);
 	var h = random(50, 300);
 	var xPos = random(windowWidth);
 	var yPos = random(windowHeight);
 
-	fillWithRandomColour();
+	isGrayscale ? fillWithRandomGrayscale() : fillWithRandomColour();
 	var cornerRadius = random(10, 25);
 	noStroke();
 	rect(xPos, yPos, w, h, cornerRadius);
@@ -88,13 +100,13 @@ function draw() {
 }
 
 
-function drawBackingForText(font, str, x, y, size, vPad) {
+function drawBackingForText(font, str, x, y, size, vPad, w) {
 	blendMode(BLEND);
 	colorMode(RGB);
 	fill(0);
 	const bounds = font.textBounds(str, x, y, size);
 	rectMode(CORNER);
-	rect(-10, bounds.y - vPad, width + 20, bounds.h + vPad + vPad);
+	rect(-10, bounds.y - vPad, w, bounds.h + vPad + vPad);
 }
 
 function drawAllTextOverlays() {
@@ -105,58 +117,80 @@ function drawAllTextOverlays() {
 	push();
 	//set to a controlled blend mode to get reliable result
 	let str = chosenBlendMode.name;
-	drawBackingForText(myFont, str, 100, height - 100, bigTextSize, 30);
-	drawBackingForText(myFont, chosenBlendMode.description, 100, height - 70, smallTextSize, 10);
+
 	fill('white');
 	textFont(myFont);
 	textSize(bigTextSize);
 	let shortcutLabel = `(${chosenBlendMode.shortcut})`;
 	let b = myFont.textBounds(shortcutLabel, 0, 0, bigTextSize);
-	text(shortcutLabel, 20, height - 100);
 	let mainTextX = 20 + b.w + 30;
 
-	text(str, mainTextX, height - 100);
+	let endX = width * 0.66;
+	drawBackingForText(myFont, str, 100, height - 100, bigTextSize, 30, endX);
+	drawBackingForText(myFont, chosenBlendMode.description, 100, height - 70, smallTextSize, 10, endX);
 
+	fill(255)
+	text(shortcutLabel, 20, height - 100);
+	text(str, mainTextX, height - 100);
 	textSize(smallTextSize);
 	text(chosenBlendMode.description, mainTextX, height - 70);
 
-	if (previousBlendMode) {
-		drawSideLabelFor(previousBlendMode, myFont, smallTextSize, true);
+
+	//side labels
+
+	textSize(smallTextSize);
+	for (let info of blendModeInfos) {
+		let isCurrent = info.name === chosenBlendMode.name;
+		drawSideLabelFor(info, myFont, smallTextSize, isCurrent);
 	}
-	drawSideLabelFor(chosenBlendMode, myFont, smallTextSize);
+
 	//restore the blendMode...
 	pop();
 }
 
-function drawSideLabelFor(modeInfo, font, textSz, isWipe = false) {
+function makeSideLabelText(shortcut, name) { return shortcut + " " + name; }
+
+function getWorstSidelabelBounds(font, textSz) {
+	const longestName = blendModeInfos.map(bmi => bmi.name).sort((a, b) => a - b)[0];
+	return font.textBounds(makeSideLabelText("1", longestName), 0, 0, textSz);
+}
+
+function drawSideLabelFor(modeInfo, font, textSz, isCurrent) {
 	push();
 	blendMode(BLEND);
-
-	const makeLabel = (shortcut, name) => shortcut + " " + name;
-
-	const longestName = blendModeInfos.map(bmi => bmi.name).sort((a, b) => a - b)[0];
-	const worstBounds = font.textBounds(makeLabel("1", longestName), 0, 0, textSz);
-
+	const worstBounds = getWorstSidelabelBounds(font, textSz);
 	const positionsLookup = "1234567890-=qwe".split("");
+	console.assert(modeInfo);
 	const ix = positionsLookup.indexOf(modeInfo.shortcut);
-	const str = makeLabel(modeInfo.shortcut, modeInfo.name);
+	const str = makeSideLabelText(modeInfo.shortcut, modeInfo.name);
 
 	textSize(textSz);
 	rectMode(CORNER);
 	fill(0);
 	let y = 30 + height * (1 / positionsLookup.length) * ix;
 	const bounds = font.textBounds(str, 0, y, textSz);
-	let x = width - worstBounds.w - 20;
-	//rect(x, 0, x, height);
-	rect(x, bounds.y - 10, bounds.w + 200, bounds.h + 20);
-	if (!isWipe) {
-		fill('white');
-		text(str, x + 10, y);
-	}
+	let x = width - worstBounds.w - 40;
+
+	let boxX = x - 20;
+	let textX = boxX + 10;
+
+	rect(boxX, bounds.y - 10, bounds.w + 200, bounds.h + 20);
+
+	//textStyle(isCurrent ? BOLDITALIC : NORMAL);
+
+	fill(isCurrent ? 'white' : 'gray');
+	text(str, textX, y);
+
 	pop();
 }
 
 function keyPressed() {
+	if (key == 'b') {
+		isGrayscale = !isGrayscale;
+	}
+	if (key == ' ') {
+		wipe();
+	}
 	const found = blendModeInfos.find(info => key === info.shortcut);
 	if (found) {
 		previousBlendMode = chosenBlendMode;
