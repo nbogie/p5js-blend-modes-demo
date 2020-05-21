@@ -12,8 +12,8 @@ let blendModeInfos;
 
 let myFont;
 
-let isGrayscale = false;
-
+let rotationDivision;
+let shapeOptions;
 
 function preload() {
 	myFont = loadFont("Roboto-Medium.ttf");
@@ -22,9 +22,24 @@ function preload() {
 function setup() {
 	createCanvas(windowWidth, windowHeight);
 	background(100);
-	rectMode(CENTER);
+	shapeOptions = {
+		roundedCorners: random([true, false]),
+		isGrayscale: random([true, false, false, false])
+	};
 
-	blendModeInfos = [
+	blendModeInfos = createBlendModeInfos();
+	rotationDivision = random([1, 1, 1, 1, 1, 3, 8, 8, 16, 16])
+	randomiseTheBlendMode();
+	rectMode(CENTER);
+}
+
+function draw() {
+	drawShapes();
+	drawAllTextOverlays();
+}
+
+function createBlendModeInfos() {
+	return [
 		[SOFT_LIGHT, "1", "SOFT_LIGHT", "Mix of DARKEST and LIGHTEST.  Works like OVERLAY, but not as harsh."],
 		[HARD_LIGHT, "2", "HARD_LIGHT", "SCREEN when greater than 50% gray, MULTIPLY when lower."],
 		[BLEND, "3", "BLEND", "Default.  Linear interpolation of colours (default)"],
@@ -52,9 +67,7 @@ function setup() {
 		};
 	});
 
-	randomiseTheBlendMode();
 }
-
 function mousePressed() {
 	background(100);
 	randomiseTheBlendMode();
@@ -84,19 +97,21 @@ function fillWithRandomGrayscale() {
 	fill(random(255));
 }
 
-function draw() {
-	var w = random(50, 300);
-	var h = random(50, 300);
-	var xPos = random(windowWidth);
-	var yPos = random(windowHeight);
+function drawShapes() {
+	let w = random(50, 300);
+	let h = random(50, 300);
+	let xPos = random(windowWidth);
+	let yPos = random(windowHeight);
 
-	isGrayscale ? fillWithRandomGrayscale() : fillWithRandomColour();
-	var cornerRadius = random(10, 25);
+	shapeOptions.isGrayscale ? fillWithRandomGrayscale() : fillWithRandomColour();
+	let cornerRadius = random(10, 25);
 	noStroke();
-	rect(xPos, yPos, w, h, cornerRadius);
+	push();
+	translate(xPos, yPos);
 
-	drawAllTextOverlays();
-
+	rotate(random([0, 1, 2, 3, 4, 5, 6, 7]) * TWO_PI / rotationDivision);
+	rect(0, 0, w, h, shapeOptions.roundedCorners ? cornerRadius : 0);
+	pop();
 }
 
 
@@ -186,10 +201,17 @@ function drawSideLabelFor(modeInfo, font, textSz, isCurrent) {
 
 function keyPressed() {
 	if (key == 'b') {
-		isGrayscale = !isGrayscale;
+		shapeOptions.isGrayscale = !shapeOptions.isGrayscale;
+		wipe();
+	}
+	if (key == 'r') {
+		shapeOptions.roundedCorners = !shapeOptions.roundedCorners;
+	}
+	if (key == 'c') {
+		wipe();
 	}
 	if (key == ' ') {
-		wipe();
+		noLoop();
 	}
 	const found = blendModeInfos.find(info => key === info.shortcut);
 	if (found) {
